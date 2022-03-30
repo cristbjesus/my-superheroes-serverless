@@ -69,8 +69,9 @@ export class EditSuperheroImage extends PureComponent<
       alert('Could not upload a file: ' + e.message)
     } finally {
       this.setUploadState(UploadState.NoUpload)
-      this.goToHome()
     }
+
+    this.goToHome()
   }
 
   goToHome = () => {

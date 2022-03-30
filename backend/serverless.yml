@@ -59,15 +59,11 @@ functions:
       - Effect: Allow
         Action:
           - dynamodb:Query
-        Resource: !Sub
-          - '${SuperheroesTableArn}/index/${self:provider.environment.SUPERHEROES_USER_ID_PUBLIC_INDEX}'
-          - SuperheroesTableArn: !GetAtt SuperheroesTable.Arn
+        Resource: !Sub '${SuperheroesTable.Arn}/index/${self:provider.environment.SUPERHEROES_USER_ID_PUBLIC_INDEX}'
       - Effect: Allow
         Action:
           - dynamodb:Query
-        Resource: !Sub
-          - '${SuperheroesTableArn}/index/${self:provider.environment.SUPERHEROES_PUBLIC_INDEX}'
-          - SuperheroesTableArn: !GetAtt SuperheroesTable.Arn
+        Resource: !Sub '${SuperheroesTable.Arn}/index/${self:provider.environment.SUPERHEROES_PUBLIC_INDEX}'
 
   RegisterSuperhero:
     handler: src/lambda/http/registerSuperhero.handler
@@ -121,9 +117,7 @@ functions:
       - Effect: Allow
         Action:
           - s3:DeleteObject
-        Resource: !Sub
-          - '${ImagesBucketArn}/*'
-          - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+        Resource: !Sub '${ImagesBucket.Arn}/*'
 
   CreateImageUploadUrl:
     handler: src/lambda/http/createImageUploadUrl.handler
@@ -142,9 +136,7 @@ functions:
       - Effect: Allow
         Action:
           - s3:GetObject
-        Resource: !Sub
-          - '${ImagesBucketArn}/*'
-          - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+        Resource: !Sub '${ImagesBucket.Arn}/*'
 
 resources:
   Resources:
@@ -235,7 +227,5 @@ resources:
               Action:
                 - 's3:PutObject'
                 - 's3:GetObject'
-              Resource: !Sub
-                - '${ImagesBucketArn}/*'
-                - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+              Resource: !Sub '${ImagesBucket.Arn}/*'
         Bucket: !Ref ImagesBucket

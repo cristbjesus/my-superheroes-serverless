@@ -11,7 +11,7 @@ The application store superheroes data, and each superhero record contains the f
 * `createdAt` (string) - date and time when a superhero was registered
 * `name` (string) - name of a superhero
 * `backstory` (string) - a history or background for a superhero
-* `superpowers` (string) - A list of superpowers for a superhero (e.g. "Self-Duplication, Teleportation, Levitation")
+* `superpowers` (string array) - A list of superpowers for a superhero (e.g. ['Self-Duplication', 'Teleportation', 'Levitation'])
 * `public` (boolean) - 'Y' if a superhero is visible to all users, 'N' otherwise
 * `imageUrl` (string) (optional) - a URL pointing to a superhero's image
 

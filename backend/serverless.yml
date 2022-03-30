@@ -1,0 +1,241 @@
+org: cristborges05
+app: serverless-my-superheroes-app
+service: serverless-my-superheroes-app
+
+plugins:
+  - serverless-webpack
+  - serverless-iam-roles-per-function
+  - serverless-plugin-tracing
+
+provider:
+  name: aws
+  runtime: nodejs12.x
+  lambdaHashingVersion: '20201221'
+
+  stage: ${opt:stage, 'dev'}
+  region: ${opt:region, 'us-east-1'}
+
+  tracing:
+    lambda: true
+    apiGateway: true
+
+  environment:
+    SUPERHEROES_TABLE: Superheroes-${self:provider.stage}
+    SUPERHEROES_USER_ID_CREATED_AT_INDEX: UserIdCreatedAtIndex
+    SUPERHEROES_USER_ID_PUBLIC_INDEX: UserIdPublicIndex
+    SUPERHEROES_PUBLIC_INDEX: PublicIndex
+    IMAGES_S3_BUCKET: !Sub '${AWS::AccountId}-serverless-my-superheroes-images-${self:provider.stage}'
+    SIGNED_URL_EXPIRATION: 300
+
+  logs:
+    restApi: true
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - xray:PutTelemetryRecords
+            - xray:PutTraceSegments
+          Resource: '*'
+
+functions:
+  Auth:
+    handler: src/lambda/auth/auth0Authorizer.handler
+
+  GetSuperheroes:
+    handler: src/lambda/http/getSuperheroes.handler
+    events:
+      - http:
+          method: get
+          path: superheroes
+          cors: true
+          authorizer: Auth
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !GetAtt SuperheroesTable.Arn
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !Sub
+          - '${SuperheroesTableArn}/index/${self:provider.environment.SUPERHEROES_USER_ID_PUBLIC_INDEX}'
+          - SuperheroesTableArn: !GetAtt SuperheroesTable.Arn
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource: !Sub
+          - '${SuperheroesTableArn}/index/${self:provider.environment.SUPERHEROES_PUBLIC_INDEX}'
+          - SuperheroesTableArn: !GetAtt SuperheroesTable.Arn
+
+  RegisterSuperhero:
+    handler: src/lambda/http/registerSuperhero.handler
+    events:
+      - http:
+          method: post
+          path: superheroes
+          cors: true
+          authorizer: Auth
+          request:
+            schemas:
+              application/json: ${file(models/register-superhero-model.json)}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:PutItem
+        Resource: !GetAtt SuperheroesTable.Arn
+
+  UpdateSuperhero:
+    handler: src/lambda/http/updateSuperhero.handler
+    events:
+      - http:
+          method: patch
+          path: superheroes/{superheroId}
+          cors: true
+          authorizer: Auth
+          request:
+            schemas:
+              application/json: ${file(models/update-superhero-model.json)}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:UpdateItem
+        Resource: !GetAtt SuperheroesTable.Arn
+
+  DeleteSuperhero:
+    handler: src/lambda/http/deleteSuperhero.handler
+    events:
+      - http:
+          method: delete
+          path: superheroes/{superheroId}
+          cors: true
+          authorizer: Auth
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:DeleteItem
+        Resource: !GetAtt SuperheroesTable.Arn
+      - Effect: Allow
+        Action:
+          - s3:DeleteObject
+        Resource: !Sub
+          - '${ImagesBucketArn}/*'
+          - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+
+  CreateImageUploadUrl:
+    handler: src/lambda/http/createImageUploadUrl.handler
+    events:
+      - http:
+          method: post
+          path: superheroes/{superheroId}/image
+          cors: true
+          authorizer: Auth
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - dynamodb:GetItem
+          - dynamodb:UpdateItem
+        Resource: !GetAtt SuperheroesTable.Arn
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+        Resource: !Sub
+          - '${ImagesBucketArn}/*'
+          - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+
+resources:
+  Resources:
+    GatewayResponseDefault4XX:
+      Type: AWS::ApiGateway::GatewayResponse
+      Properties:
+        ResponseParameters:
+          gatewayresponse.header.Access-Control-Allow-Origin: "'*'"
+          gatewayresponse.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+          gatewayresponse.header.Access-Control-Allow-Methods: "'GET,OPTIONS,POST'"
+        ResponseType: DEFAULT_4XX
+        RestApiId:
+          Ref: ApiGatewayRestApi
+
+    SuperheroesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: userId
+            AttributeType: S
+          - AttributeName: superheroId
+            AttributeType: S
+          - AttributeName: createdAt
+            AttributeType: S
+          - AttributeName: public
+            AttributeType: S
+        KeySchema:
+          - AttributeName: userId
+            KeyType: HASH
+          - AttributeName: superheroId
+            KeyType: RANGE
+        BillingMode: PAY_PER_REQUEST
+        TableName: ${self:provider.environment.SUPERHEROES_TABLE}
+        LocalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.SUPERHEROES_USER_ID_CREATED_AT_INDEX}
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: createdAt
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ${self:provider.environment.SUPERHEROES_USER_ID_PUBLIC_INDEX}
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+              - AttributeName: public
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+        GlobalSecondaryIndexes:
+          - IndexName: ${self:provider.environment.SUPERHEROES_PUBLIC_INDEX}
+            KeySchema:
+              - AttributeName: public
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    ImagesBucket:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.IMAGES_S3_BUCKET}
+        CorsConfiguration:
+          CorsRules:
+            -
+              AllowedOrigins:
+                - '*'
+              AllowedHeaders:
+                - '*'
+              AllowedMethods:
+                - GET
+                - PUT
+                - POST
+                - DELETE
+                - HEAD
+              MaxAge: 3000
+
+    BucketPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        PolicyDocument:
+          Id: MyPolicy
+          Version: '2012-10-17'
+          Statement: 
+            - Sid: PublicReadForGetBucketObjects
+              Effect: Allow
+              Principal: '*'
+              Action:
+                - 's3:PutObject'
+                - 's3:GetObject'
+              Resource: !Sub
+                - '${ImagesBucketArn}/*'
+                - ImagesBucketArn: !GetAtt ImagesBucket.Arn
+        Bucket: !Ref ImagesBucket

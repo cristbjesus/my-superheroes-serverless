@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "group",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9 ]+$",
+      "minLength": 5,
+      "maxLength": 20
+    },
+    "backstory": {
+      "type": "string"
+    },
+    "superpowers": {
+      "type": "array"
+    }
+  },
+  "required": [
+    "name",
+    "backstory",
+    "superpowers"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,34 @@
+{
+  "name": "serverless-my-superheroes-app",
+  "version": "1.0.0",
+  "description": "Serverless My Superheroes App",
+  "dependencies": {
+    "@types/axios": "^0.14.0",
+    "@types/http-errors": "^1.8.2",
+    "aws-xray-sdk": "^2.5.0",
+    "axios": "^0.26.1",
+    "http-errors": "^1.8.1",
+    "jsonwebtoken": "^8.5.1",
+    "middy": "^0.27.1",
+    "source-map-support": "^0.5.21",
+    "uuid": "^3.4.0",
+    "winston": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.93",
+    "@types/jsonwebtoken": "^8.5.8",
+    "@types/node": "^10.17.60",
+    "aws-sdk": "^2.1101.0",
+    "serverless-aws-documentation": "^1.1.0",
+    "serverless-iam-roles-per-function": "^3.2.0",
+    "serverless-plugin-canary-deployments": "^0.4.8",
+    "serverless-plugin-tracing": "^2.0.0",
+    "serverless-reqvalidator-plugin": "^1.0.4",
+    "serverless-webpack": "^5.6.1",
+    "ts-loader": "^5.4.5",
+    "typescript": "^4.6.3",
+    "webpack": "^5.70.0"
+  },
+  "author": "Cristiano Jesus",
+  "license": "MIT"
+}

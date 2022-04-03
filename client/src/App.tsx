@@ -43,7 +43,6 @@ export default class App extends Component<AppProps, AppState> {
               <Grid.Column width={16}>
                 <Router history={this.props.history}>
                   {this.generateMenu()}
-
                   {this.generateCurrentPage()}
                 </Router>
               </Grid.Column>
@@ -60,19 +59,16 @@ export default class App extends Component<AppProps, AppState> {
         <Menu secondary style={{marginBottom: '3em'}}>
           <Menu.Item
             name='home'
-            active={this.props.location.pathname === '/'}
-            >
+            active={this.props.location.pathname === '/'}>
             <Link to='/'>Home</Link>
           </Menu.Item>
-
           <Menu.Menu position='right'>
             <Menu.Item>
             <Icon name='user' /> {this.props.auth.getUserId()}
             </Menu.Item>
             <Menu.Item
               name='logout'
-              onClick={this.handleLogout}
-            />
+              onClick={this.handleLogout} />
           </Menu.Menu>
         </Menu>
       )
@@ -91,16 +87,14 @@ export default class App extends Component<AppProps, AppState> {
           exact
           render={props => {
             return <Superheroes {...props} auth={this.props.auth} />
-          }}
-        />
+          }} />
 
         <Route
           path='/superheroes/:superheroId/image'
           exact
           render={props => {
             return <EditSuperheroImage {...props} auth={this.props.auth} />
-          }}
-        />
+          }} />
 
         <Route component={NotFound} />
       </Switch>

@@ -4,7 +4,10 @@
   "type": "object",
   "properties": {
     "name": {
-      "type": "string"
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9 ]+$",
+      "minLength": 5,
+      "maxLength": 20
     },
     "backstory": {
       "type": "string"

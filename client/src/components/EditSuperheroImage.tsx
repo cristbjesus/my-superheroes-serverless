@@ -1,5 +1,5 @@
 import { PureComponent } from 'react'
-import { Form, Button, Image, Icon } from 'semantic-ui-react'
+import { Form, Button, Image, Icon, Message, Container } from 'semantic-ui-react'
 import { History, Location } from 'history'
 import Auth from '../auth/Auth'
 import { getImageUploadUrl, uploadFile } from '../api/superheroes-api'
@@ -8,6 +8,8 @@ enum UploadState {
   NoUpload,
   FetchingPresignedUrl,
   UploadingFile,
+  UploadedSuccessfully,
+  UploadFailed
 }
 
 interface EditSuperheroImageLocationState {
@@ -31,17 +33,22 @@ interface EditSuperheroImageState {
   uploadState: UploadState
 }
 
-export class EditSuperheroImage extends PureComponent<
-  EditSuperheroImageProps,
-  EditSuperheroImageState
-> {
+export class EditSuperheroImage extends PureComponent<EditSuperheroImageProps, EditSuperheroImageState> {
+
+  messageTimeouts: NodeJS.Timeout[] = [];
+
   state: EditSuperheroImageState = {
     file: undefined,
     uploadState: UploadState.NoUpload
   }
 
+  componentWillUnmount() {
+    this.messageTimeouts.forEach(messageTimeout => clearTimeout(messageTimeout))
+  }
+
   handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files
+
     if (!files) return
 
     this.setState({
@@ -54,7 +61,6 @@ export class EditSuperheroImage extends PureComponent<
 
     try {
       if (!this.state.file) {
-        alert('File should be selected')
         return
       }
 
@@ -62,31 +68,30 @@ export class EditSuperheroImage extends PureComponent<
       const imageUploadUrl = await getImageUploadUrl(this.props.auth.getIdToken(), this.props.match.params.superheroId)
 
       this.setUploadState(UploadState.UploadingFile)
+
       await uploadFile(imageUploadUrl, this.state.file)
 
-      alert('File was uploaded!')
-    } catch (e) {
-      alert('Could not upload a file: ' + e.message)
-    } finally {
-      this.setUploadState(UploadState.NoUpload)
-    }
+      this.setUploadState(UploadState.UploadedSuccessfully)
 
-    this.goToHome()
+      this.messageTimeouts.push(setTimeout(this.goToHome, 2000))
+    } catch {
+      this.setUploadState(UploadState.UploadFailed)
+
+      this.messageTimeouts.push(setTimeout(
+        () => this.setUploadState(UploadState.NoUpload),
+        3000))
+    }
   }
 
   goToHome = () => {
     this.props.history.push({
       pathname: `/`,
-      state: {
-        superheroState: this.getSuperheroState()
-      }
+      state: { superheroState: this.getSuperheroState() }
     })
   }
 
   setUploadState(uploadState: UploadState) {
-    this.setState({
-      uploadState
-    })
+    this.setState({ uploadState })
   }
 
   getOldImageUrl() {
@@ -106,7 +111,7 @@ export class EditSuperheroImage extends PureComponent<
 
         {this.renderImage()}
 
-        <h3 style={{marginTop: '1em'}}>{`Upload${this.getOldImageUrl() ? ' new' : ''} image`}</h3>
+        <h3 style={{marginTop: '1em'}}>{`Upload${this.getOldImageUrl() ? ' New' : ''} Image`}</h3>
 
         <Form onSubmit={this.handleSubmit}>
           <Form.Field>
@@ -137,9 +142,8 @@ export class EditSuperheroImage extends PureComponent<
 
   renderButtons() {
     return (
-      <div>
-        {this.state.uploadState === UploadState.FetchingPresignedUrl && <p>Uploading image metadata</p>}
-        {this.state.uploadState === UploadState.UploadingFile && <p>Uploading file</p>}
+      <Container>
+        {this.renderUploadStatusMessages(this.state.uploadState)}
         {this.getSuperheroState() &&
           <Button animated disabled={this.state.uploadState !== UploadState.NoUpload} onClick={this.goToHome}>
             <Button.Content hidden>Back</Button.Content>
@@ -148,13 +152,45 @@ export class EditSuperheroImage extends PureComponent<
             </Button.Content>
           </Button>
         }
-        <Button primary animated='fade' loading={this.state.uploadState !== UploadState.NoUpload} type='submit'>
+        <Button 
+          primary 
+          animated='fade' 
+          disabled={this.state.uploadState !== UploadState.NoUpload || !this.state.file} 
+          type='submit'>
           <Button.Content hidden>Upload</Button.Content>
           <Button.Content visible>
             <Icon name='cloud upload' />
           </Button.Content>
         </Button>
-      </div>
+      </Container>
     )
+  }
+
+  renderUploadStatusMessages(uploadState: UploadState) {
+    switch (uploadState) {
+      case UploadState.FetchingPresignedUrl:
+      case UploadState.UploadingFile:
+        return (
+          <Message icon>
+            <Icon name='circle notched' loading />
+            <Message.Content>
+              <Message.Header>Just one second</Message.Header>
+              <p>{`Uploading ${this.state.uploadState === UploadState.FetchingPresignedUrl ? 'image metadata' : 'file'}`}</p>
+            </Message.Content>
+          </Message>
+        )
+      case UploadState.UploadedSuccessfully:
+        return (
+          <Message positive>
+            <Message.Header>File uploaded!</Message.Header>
+          </Message>
+        )
+      case UploadState.UploadFailed:
+        return (
+          <Message negative>
+            <Message.Header>File upload failed!</Message.Header>
+          </Message>
+        )
+    }
   }
 }
